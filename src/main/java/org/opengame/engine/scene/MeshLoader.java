@@ -42,11 +42,11 @@ public class MeshLoader {
 
         var faces = aiMesh.mFaces();
         var meshIndices = new int[aiMesh.mNumFaces() * 3];
-        for (int i = 0; i < aiMesh.mNumFaces(); i+=3) {
+        for (int i = 0; i < aiMesh.mNumFaces(); i++) {
             var face = faces.get(i);
-            meshIndices[i] = face.mIndices().get(0);
-            meshIndices[i+1] = face.mIndices().get(1);
-            meshIndices[i+2] = face.mIndices().get(2);
+            meshIndices[i * 3] = face.mIndices().get(0);
+            meshIndices[i * 3 + 1] = face.mIndices().get(1);
+            meshIndices[i * 3 + 2] = face.mIndices().get(2);
         }
 
         return new Mesh(meshVertices, meshIndices, null, null);

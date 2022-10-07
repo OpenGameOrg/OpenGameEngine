@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.extern.java.Log;
 import lombok.extern.log4j.Log4j2;
 import lombok.extern.slf4j.Slf4j;
+import org.joml.Vector2f;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.bgfx.BGFXInit;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -14,6 +15,10 @@ import org.lwjgl.glfw.GLFWNativeX11;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.Platform;
 import org.opengame.engine.app.AppConfig;
+import org.opengame.engine.event.EventBus;
+import org.opengame.engine.event.EventType;
+import org.opengame.engine.event.KeyEventData;
+import org.opengame.engine.event.MouseEventData;
 import org.opengame.engine.scene.Scene;
 
 import java.nio.ByteBuffer;
@@ -59,17 +64,7 @@ public class Engine {
         windowHandle = glfwCreateWindow(config.getWindowWidth(), config.getWindowHeight(),
                 config.getAppName(), NULL, NULL);
 
-        glfwSetKeyCallback(windowHandle, (handle, key, scancode, action, mods) -> {
-            if (action != GLFW_RELEASE) {
-                return;
-            }
-
-            switch (key) {
-                case GLFW_KEY_ESCAPE:
-                    glfwSetWindowShouldClose(handle, true);
-                    break;
-            }
-        });
+        setupInputCallbacks();
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             BGFXInit init = BGFXInit.malloc();
@@ -122,6 +117,29 @@ public class Engine {
     }
 
     private void logAvailableDevices() {
+    }
+
+    private void setupInputCallbacks() {
+        glfwSetKeyCallback(windowHandle, (window, key, scancode, action, mods) -> {
+            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
+                glfwSetWindowShouldClose(window, true);
+            }
+            if (action == GLFW_PRESS || action == GLFW_RELEASE) {
+                EventBus.broadcastEvent(EventType.KEY_PRESSED, new KeyEventData(key, action == GLFW_PRESS));
+            }
+        });
+
+        glfwSetMouseButtonCallback(windowHandle, (window, button, action, mods) -> {
+            EventBus.broadcastEvent(EventType.MOUSE_BUTTON_EVENT, new KeyEventData(button, action == GLFW_PRESS));
+        });
+
+        glfwSetCursorPosCallback(windowHandle, (window, xpos, ypos) -> {
+            EventBus.broadcastEvent(EventType.MOUSE_MOVED, new MouseEventData(xpos, ypos));
+        });
+    }
+
+    public static void setCursorPos(Vector2f cursorPos) {
+        glfwSetCursorPos(instance.windowHandle, cursorPos.x, cursorPos.y);
     }
 
     public void startLoop() {

@@ -1,9 +1,7 @@
 package org.opengame.engine.render;
 
 import lombok.Getter;
-import org.lwjgl.bgfx.BGFX;
-import org.lwjgl.bgfx.BGFXVertexLayout;
-import org.lwjgl.system.MemoryUtil;
+import org.opengame.engine.scene.Mesh;
 
 import java.io.IOException;
 

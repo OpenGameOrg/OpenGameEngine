@@ -141,7 +141,7 @@ public class FlyingCamera extends Camera {
     }
 
     @Override
-    public void frame(float time, float frameTimeMs) {
+    public void update() {
         if (currentStrafeSpeed != 0) {
             moveRight(currentStrafeSpeed);
         }

@@ -2,11 +2,11 @@ package org.opengame.engine.scene;
 
 import lombok.Getter;
 import org.joml.Vector3f;
-import org.opengame.engine.object.DynamicObject;
+import org.opengame.engine.object.Renderable;
 
 import java.util.List;
 
-public class Model implements DynamicObject {
+public class Model implements Renderable {
     private String model;
     @Getter
     private List<Mesh> meshes;

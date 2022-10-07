@@ -37,6 +37,10 @@ public class Scene {
         objects.forEach((mesh) -> mesh.frame(time, frameTime));
     }
 
+    public void update() {
+        objects.forEach(SceneObject::update);
+    }
+
     public void setCamera(Camera camera) {
         if (this.camera != null) {
             objects.remove(camera);

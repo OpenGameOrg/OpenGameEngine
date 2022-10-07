@@ -41,6 +41,9 @@ public class Engine {
     @Setter
     private Scene currentScene;
 
+    private float tickTime = 1000;
+    private int msPerUpdate = 1000 / 20;
+
     /**
      * Init Vulkan context and window
      */
@@ -163,8 +166,14 @@ public class Engine {
             bgfx_dbg_text_clear(0, false);
             bgfx_dbg_text_printf(0, 1, 0x1f, "Hello bgfx!");
 
+            var frameMs = (float) toMs * frameTime;
             if (currentScene != null) {
-                currentScene.render((float) time, (float) toMs * frameTime);
+                if (tickTime >= msPerUpdate) {
+                    currentScene.update();
+                    tickTime = 0;
+                }
+                tickTime += frameMs;
+                currentScene.render((float) time, frameMs);
             }
 
             bgfx_frame(false);

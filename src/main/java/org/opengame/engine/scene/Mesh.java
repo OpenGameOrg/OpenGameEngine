@@ -9,7 +9,6 @@ import org.lwjgl.bgfx.BGFXReleaseFunctionCallback;
 import org.lwjgl.bgfx.BGFXVertexLayout;
 import org.lwjgl.system.MemoryUtil;
 import org.opengame.engine.Engine;
-import org.opengame.engine.object.DynamicObject;
 import org.opengame.engine.object.SceneObject;
 
 import java.io.BufferedInputStream;

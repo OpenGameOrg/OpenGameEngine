@@ -8,14 +8,19 @@ import org.opengame.engine.render.TestCube;
 import org.opengame.engine.scene.Scene;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 
 @Log
 public class TestClient {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException, InterruptedException, URISyntaxException {
         log.info("LOG TEST");
         // start engine
         var engine = new Engine();
-        engine.Init(new AppConfig());
+        var config = new AppConfig();
+        if (args.length > 0) {
+            config.setWorkingDirectory(args[0]);
+        }
+        engine.Init(config);
 
         var scene = new Scene();
 //        for (int i = 0; i < 1; i++) {

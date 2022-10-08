@@ -49,6 +49,6 @@ public class MeshLoader {
             meshIndices[i * 3 + 2] = face.mIndices().get(2);
         }
 
-        return new Mesh(meshVertices, meshIndices, null, null);
+        return new Mesh(meshVertices, meshIndices, "vs_simple_textured", "fs_simple_textured");
     }
 }

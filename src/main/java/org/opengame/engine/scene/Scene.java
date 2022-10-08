@@ -2,6 +2,7 @@ package org.opengame.engine.scene;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.java.Log;
 import org.opengame.engine.camera.Camera;
 import org.opengame.engine.camera.FlyingCamera;
 import org.opengame.engine.object.SceneObject;
@@ -13,6 +14,7 @@ import java.util.Vector;
  */
 @Getter
 @Setter
+@Log
 public class Scene {
     private String name;
     private final Vector<SceneObject> objects;

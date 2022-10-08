@@ -49,6 +49,7 @@ public class Engine {
      */
     public void Init(AppConfig config) {
         log.info("Init");
+        log.info("Working directory: " + config.getWorkingDirectory());
         instance = this;
         this.config = config;
         initWindow(config);
@@ -72,6 +73,7 @@ public class Engine {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             BGFXInit init = BGFXInit.malloc();
             bgfx_init_ctor(init);
+            init.type(BGFX_RENDERER_TYPE_OPENGL);
             init.resolution(it -> it
                     .width(config.getWindowWidth())
                     .height(config.getWindowHeight())
@@ -189,7 +191,7 @@ public class Engine {
     }
 
     public static String getWorkingDirectory() {
-        return Objects.requireNonNull(Engine.class.getResource(".")).getPath() + "../../../";
+        return instance.config.getWorkingDirectory();
     }
 
     public static Scene getCurrentScene() {

@@ -2,6 +2,7 @@ package org.opengame.engine.scene;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.java.Log;
 import lombok.extern.log4j.Log4j2;
 import org.joml.Matrix4x3f;
 import org.joml.Vector3f;
@@ -25,7 +26,7 @@ import static org.lwjgl.system.MemoryUtil.*;
 /**
  * Base class for all meshes
  */
-@Log4j2
+@Log
 public class Mesh extends SceneObject {
     private static final int VERTEX_SIZE = (3 * 4 + 4);
     private static BGFXReleaseFunctionCallback releaseMemoryCb =
@@ -208,7 +209,8 @@ public class Mesh extends SceneObject {
 
         bgfx_encoder_set_state(encoder, BGFX_STATE_DEFAULT, 0);
 
-        bgfx_encoder_submit(encoder, 0, (short) 0, 0, 0);
+        bgfx_encoder_submit(encoder, 0, program, 0, 0);
+
         bgfx_encoder_end(encoder);
     }
 

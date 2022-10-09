@@ -27,7 +27,7 @@ public class TestClient {
 //            scene.add(new TestCube());
 //        }
 
-        var model = MeshLoader.loadModel( Engine.getWorkingDirectory() + "models/car.obj");
+        var model = MeshLoader.loadModel( Engine.getWorkingDirectory() + "models/cube.obj");
         scene.add(model);
         model.setRotation(new Vector3f(0, 1.4f, 0));
         model.setPosition(new Vector3f(0, 1, 20));

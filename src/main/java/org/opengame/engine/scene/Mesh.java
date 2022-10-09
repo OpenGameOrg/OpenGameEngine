@@ -6,6 +6,7 @@ import lombok.extern.java.Log;
 import lombok.extern.log4j.Log4j2;
 import org.joml.Matrix4x3f;
 import org.joml.Vector3f;
+import org.lwjgl.bgfx.BGFXMemory;
 import org.lwjgl.bgfx.BGFXReleaseFunctionCallback;
 import org.lwjgl.bgfx.BGFXVertexLayout;
 import org.lwjgl.system.MemoryUtil;
@@ -28,9 +29,10 @@ import static org.lwjgl.system.MemoryUtil.*;
  */
 @Log
 public class Mesh extends SceneObject {
-    private static final int VERTEX_SIZE = (3 * 4 + 4);
+    private static final int VERTEX_SIZE = (5 * 4);
     private static BGFXReleaseFunctionCallback releaseMemoryCb =
             BGFXReleaseFunctionCallback.create((_ptr, _userData) -> nmemFree(_ptr));
+    private static final String TEST_TEXTURE = "test.dds";
 
     private final ByteBuffer vertices;
     private final ByteBuffer indices;
@@ -44,6 +46,8 @@ public class Mesh extends SceneObject {
     private final short indexBuffer;
     private final BGFXVertexLayout layout;
     private final short program;
+    private final short texture;
+    private final short textureUniform;
 
     private final Matrix4x3f model = new Matrix4x3f();
     private final FloatBuffer modelBuffer;
@@ -55,18 +59,20 @@ public class Mesh extends SceneObject {
     @Setter
     private Vector3f rotation;
 
-    public Mesh(Object[][] vertexData, int[] indexData, String vertexShaderName, String fragmentShaderName) throws IOException {
+    public Mesh(Object[][] vertexData, int[] indexData, String vertexShaderName,
+                String fragmentShaderName, String textureFileName) throws IOException {
         position = new Vector3f();
         rotation = new Vector3f();
 
-        layout = createVertexLayout(false, true, 0);
+        layout = createVertexLayout(false, false, true);
         vertexCount = vertexData.length;
         vertices = memAlloc(vertexData.length * VERTEX_SIZE);
         vertexBuffer = createVertexBuffer(vertices, layout, vertexData);
         indexCount = indexData.length;
         indices = memAlloc(indexData.length * 2);
         indexBuffer = createIndexBuffer(indices, indexData);
-
+        texture = loadTexture(textureFileName == null ? TEST_TEXTURE : textureFileName);
+        textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
         if (vertexShaderName != null && fragmentShaderName != null) {
             short vertexShader = loadShader(vertexShaderName);
             short fragmentShader = loadShader(fragmentShaderName);
@@ -84,10 +90,10 @@ public class Mesh extends SceneObject {
      * Create vertex layout for mesh
      * @param withNormals use normals
      * @param withColor use color
-     * @param numUVs uv count
+     * @param withTexture use texture
      * @return vertex layout
      */
-    protected BGFXVertexLayout createVertexLayout(boolean withNormals, boolean withColor, int numUVs) {
+    protected BGFXVertexLayout createVertexLayout(boolean withNormals, boolean withColor, boolean withTexture) {
         var layout = BGFXVertexLayout.calloc();
 
         bgfx_vertex_layout_begin(layout, Engine.getRenderer());
@@ -98,6 +104,9 @@ public class Mesh extends SceneObject {
         }
         if (withColor) {
             bgfx_vertex_layout_add(layout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, false);
+        }
+        if (withTexture) {
+            bgfx_vertex_layout_add(layout, BGFX_ATTRIB_TEXCOORD0, 2, BGFX_ATTRIB_TYPE_FLOAT, true, true);
         }
 
         bgfx_vertex_layout_end(layout);
@@ -165,6 +174,14 @@ public class Mesh extends SceneObject {
         return bgfx_create_shader(Objects.requireNonNull(bgfx_make_ref_release(shaderCode, releaseMemoryCb, NULL)));
     }
 
+    private short loadTexture(String fileName) throws IOException {
+        var textureDirPath = Engine.getWorkingDirectory() + "textures/";
+        ByteBuffer textureData = loadResource(textureDirPath + fileName);
+        BGFXMemory textureMemory = bgfx_make_ref_release(textureData, releaseMemoryCb, NULL);
+
+        return bgfx_create_texture(Objects.requireNonNull(textureMemory), BGFX_TEXTURE_NONE, 0, null);
+    }
+
     private ByteBuffer loadResource(String resourcePath) throws IOException {
         var file = new File(resourcePath);
 
@@ -207,6 +224,8 @@ public class Mesh extends SceneObject {
         bgfx_encoder_set_vertex_buffer(encoder, 0, vertexBuffer, 0, vertexCount);
         bgfx_encoder_set_index_buffer(encoder, indexBuffer, 0, indexCount);
 
+        bgfx_encoder_set_texture(encoder, 0, textureUniform, texture, 0xffffffff);
+
         bgfx_encoder_set_state(encoder, BGFX_STATE_DEFAULT, 0);
 
         bgfx_encoder_submit(encoder, 0, program, 0, 0);
@@ -218,6 +237,8 @@ public class Mesh extends SceneObject {
         MemoryUtil.memFree(modelBuffer);
 
         bgfx_destroy_program(program);
+        bgfx_destroy_texture(texture);
+        bgfx_destroy_uniform(textureUniform);
 
         bgfx_destroy_index_buffer(indexBuffer);
         MemoryUtil.memFree(indices);

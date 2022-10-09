@@ -37,8 +37,15 @@ public class MeshLoader {
 
     private static Mesh createMesh(AIMesh aiMesh) throws IOException {
         var vertices = aiMesh.mVertices();
-        var meshVertices = vertices.stream().map((vert) ->
-                new Object[] { vert.x(), vert.y(), vert.z(), 0xff0000ff}).toArray(Object[][]::new);
+        var texCoords = aiMesh.mTextureCoords(0);
+
+        assert texCoords != null;
+
+        var meshVertices = new Object[aiMesh.mNumVertices()][5];
+        for (int i = 0; i < meshVertices.length; i++) {
+            var vert = vertices.get(i);
+            meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(), texCoords.get(i).x(), texCoords.get(i).y()};
+        }
 
         var faces = aiMesh.mFaces();
         var meshIndices = new int[aiMesh.mNumFaces() * 3];
@@ -49,6 +56,7 @@ public class MeshLoader {
             meshIndices[i * 3 + 2] = face.mIndices().get(2);
         }
 
-        return new Mesh(meshVertices, meshIndices, "vs_simple_textured", "fs_simple_textured");
+        return new Mesh(meshVertices, meshIndices,
+                "vs_simple_textured", "fs_simple_textured", null);
     }
 }

@@ -12,7 +12,7 @@ import java.io.IOException;
 public class TestCube extends Mesh {
 
     public TestCube() throws IOException {
-        super(getTestVertices(), getTestIndices(), "vs_cube", "fs_cube");
+        super(getTestVertices(), getTestIndices(), "vs_cube", "fs_cube", null);
     }
 
     private static Object[][] getTestVertices() {

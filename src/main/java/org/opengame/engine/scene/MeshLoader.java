@@ -57,6 +57,6 @@ public class MeshLoader {
         }
 
         return new Mesh(meshVertices, meshIndices,
-                "vs_simple_textured", "fs_simple_textured", null);
+                "vs_cubes", "fs_cubes", null);
     }
 }

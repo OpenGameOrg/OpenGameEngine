@@ -73,6 +73,7 @@ public class Mesh extends SceneObject {
         indexBuffer = createIndexBuffer(indices, indexData);
         texture = loadTexture(textureFileName == null ? TEST_TEXTURE : textureFileName);
         textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+
         if (vertexShaderName != null && fragmentShaderName != null) {
             short vertexShader = loadShader(vertexShaderName);
             short fragmentShader = loadShader(fragmentShaderName);
@@ -213,7 +214,7 @@ public class Mesh extends SceneObject {
 
     @Override
     public void frame(float time, float frameTime) {
-        bgfx_dbg_text_printf(0, 15, 0x4f, "testClient - OpenGameEngine");
+        //bgfx_dbg_text_printf(0, 15, 0x4f, "testClient - OpenGameEngine");
 
         long encoder = bgfx_encoder_begin(false);
         bgfx_encoder_set_transform(encoder,
@@ -226,7 +227,11 @@ public class Mesh extends SceneObject {
 
         bgfx_encoder_set_texture(encoder, 0, textureUniform, texture, 0xffffffff);
 
-        bgfx_encoder_set_state(encoder, BGFX_STATE_DEFAULT, 0);
+        bgfx_encoder_set_state(encoder, BGFX_STATE_WRITE_RGB
+                | BGFX_STATE_WRITE_A
+                | BGFX_STATE_WRITE_Z
+                | BGFX_STATE_DEPTH_TEST_LESS
+                | BGFX_STATE_MSAA, 0);
 
         bgfx_encoder_submit(encoder, 0, program, 0, 0);
 

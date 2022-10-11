@@ -39,7 +39,7 @@ public class Camera extends SceneObject {
         left = new Vector3f(1, 0, 0);
         up = new Vector3f(0, 1, 0);
 
-        CameraUtils.perspective(20, Engine.getScreenWidth(), Engine.getScreenHeight(),
+        CameraUtils.perspective(35, Engine.getScreenWidth(), Engine.getScreenHeight(),
                 0.1f, 100.0f, projection);
     }
 

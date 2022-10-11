@@ -46,8 +46,8 @@ public class Mesh extends SceneObject {
     private final short indexBuffer;
     private final BGFXVertexLayout layout;
     private final short program;
-    private final short texture;
-    private final short textureUniform;
+    private short texture;
+    private short textureUniform;
 
     private final Matrix4x3f model = new Matrix4x3f();
     private final FloatBuffer modelBuffer;
@@ -212,14 +212,23 @@ public class Mesh extends SceneObject {
         return resource;
     }
 
+    public void setTexture(String textureName) throws IOException {
+        bgfx_destroy_texture(texture);
+        bgfx_destroy_uniform(textureUniform);
+
+        texture = loadTexture(textureName);
+        textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+    }
+
     @Override
     public void frame(float time, float frameTime) {
-        //bgfx_dbg_text_printf(0, 15, 0x4f, "testClient - OpenGameEngine");
+        bgfx_dbg_text_printf(0, 2, 0x6f, "OpenGameEngine 0.0.1-SNAPSHOT");
+        bgfx_dbg_text_printf(0, 3, 0x0f, String.format("Frame: %7.3f[ms]", frameTime));
 
         long encoder = bgfx_encoder_begin(false);
         bgfx_encoder_set_transform(encoder,
-                   model.translation(position.x, position.y, position.z)
-                        .rotateXYZ(rotation.x, rotation.y, rotation.z)
+                model.translation(position)
+                        .rotateXYZ(rotation)
                         .get4x4(modelBuffer));
 
         bgfx_encoder_set_vertex_buffer(encoder, 0, vertexBuffer, 0, vertexCount);
@@ -234,7 +243,6 @@ public class Mesh extends SceneObject {
                 | BGFX_STATE_MSAA, 0);
 
         bgfx_encoder_submit(encoder, 0, program, 0, 0);
-
         bgfx_encoder_end(encoder);
     }
 

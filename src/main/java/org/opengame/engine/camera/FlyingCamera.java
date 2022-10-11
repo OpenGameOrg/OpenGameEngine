@@ -1,5 +1,7 @@
 package org.opengame.engine.camera;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.java.Log;
 import org.joml.*;
 import org.opengame.engine.Engine;
@@ -20,6 +22,8 @@ public class FlyingCamera extends Camera {
     private final Vector2f windowCenterPos;
 
     private Vector2f viewportSize;
+    @Setter
+    @Getter
     private float flySpeed;
     private boolean isChangingDirection;
     private double lastMouseX = -1;

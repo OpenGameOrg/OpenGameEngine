@@ -4,6 +4,7 @@ import lombok.Getter;
 import org.joml.Vector3f;
 import org.opengame.engine.object.Renderable;
 
+import java.io.IOException;
 import java.util.List;
 
 public class Model implements Renderable {
@@ -22,6 +23,15 @@ public class Model implements Renderable {
         meshes.forEach((mesh) -> mesh.setPosition(position));
     }
 
+    public void setTexture(String textureName) {
+        meshes.forEach(mesh -> {
+            try {
+                mesh.setTexture(textureName);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
     @Override
     public void frame(float time, float frameTimeMs) {
         meshes.forEach((mesh) -> mesh.frame(time, frameTimeMs));

@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor
 @Getter
-public class KeyEventData extends EventData {
+public class KeyEventData {
     private final int keyCode;
     private final boolean isPressed;
 }

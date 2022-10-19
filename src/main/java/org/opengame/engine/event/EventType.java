@@ -1,14 +1,19 @@
 package org.opengame.engine.event;
 
+import org.opengame.engine.object.SceneObject;
+
 public enum EventType {
     KEY_PRESSED(KeyEventData.class),
     KEY_RELEASED(KeyEventData.class),
     MOUSE_BUTTON_EVENT(KeyEventData.class),
-    MOUSE_MOVED(MouseEventData.class);
+    MOUSE_MOVED(MouseEventData.class),
 
-    private final Class<? extends EventData> eventDataClass;
+    // Scene
+    OBJECT_ADDED_TO_SCENE(SceneObject .class);
 
-    EventType(Class<? extends EventData> eventDataClass) {
+    private final Class<?> eventDataClass;
+
+    EventType(Class<?> eventDataClass) {
         this.eventDataClass = eventDataClass;
     }
 }

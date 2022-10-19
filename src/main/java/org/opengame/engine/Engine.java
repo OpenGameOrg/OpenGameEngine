@@ -42,7 +42,7 @@ public class Engine {
     private Scene currentScene;
 
     private float tickTime = 1000;
-    private int msPerUpdate = 1000 / 20;
+    private int msPerUpdate;
 
     /**
      * Init Vulkan context and window
@@ -52,6 +52,7 @@ public class Engine {
         log.info("Working directory: " + config.getWorkingDirectory());
         instance = this;
         this.config = config;
+        msPerUpdate = 1000 / config.getUps();
         initWindow(config);
     }
 
@@ -107,7 +108,7 @@ public class Engine {
         log.info("bgfx renderer: " + bgfx_get_renderer_name(bgfx_get_renderer_type()));
 
         bgfx_set_debug(BGFX_DEBUG_TEXT);
-        bgfx_set_view_clear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
+        bgfx_set_view_clear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x0, 1.0f, 0);
     }
 
     private void logAvailableRenderers() {
@@ -171,7 +172,7 @@ public class Engine {
             var frameMs = (float) toMs * frameTime;
             if (currentScene != null) {
                 if (tickTime >= msPerUpdate) {
-                    currentScene.update();
+                    currentScene.update((float) time, msPerUpdate);
                     tickTime = 0;
                 }
                 tickTime += frameMs;
@@ -208,5 +209,9 @@ public class Engine {
 
     public static int getScreenHeight() {
         return instance.getConfig().getWindowHeight();
+    }
+
+    public static AppConfig getAppConfig() {
+        return instance.config;
     }
 }

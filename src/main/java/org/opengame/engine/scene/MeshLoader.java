@@ -6,6 +6,7 @@ import org.lwjgl.assimp.AIScene;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.lwjgl.assimp.Assimp.aiImportFile;
 import static org.lwjgl.assimp.Assimp.aiProcess_OptimizeMeshes;
@@ -15,7 +16,7 @@ import static org.lwjgl.assimp.Assimp.aiProcess_OptimizeMeshes;
  */
 @Log
 public class MeshLoader {
-    public static Model loadModel(String modelPath) throws IOException {
+    public static List<Mesh> loadMeshes(String modelPath) throws IOException {
         AIScene scene = aiImportFile(modelPath, aiProcess_OptimizeMeshes);
 
         if (scene == null) {
@@ -32,7 +33,11 @@ public class MeshLoader {
             meshes.add(createMesh(AIMesh.create(meshesBuffer.get(i))));
         }
 
-        return new Model(meshes);
+        return meshes;
+    }
+
+    public static Model loadModel(String modelPath) throws IOException {
+        return new Model(loadMeshes(modelPath));
     }
 
     private static Mesh createMesh(AIMesh aiMesh) throws IOException {
@@ -56,7 +61,12 @@ public class MeshLoader {
             meshIndices[i * 3 + 2] = face.mIndices().get(2);
         }
 
-        return new Mesh(meshVertices, meshIndices,
-                "vs_simple_textured", "fs_simple_textured", null);
+        return new Mesh(MeshInfo.builder()
+                .vertexData(meshVertices)
+                .indexData(meshIndices)
+                .useTexture(true)
+                .vertexShaderName("vs_simple_textured")
+                .fragmentShaderName("fs_simple_textured").build()
+        );
     }
 }

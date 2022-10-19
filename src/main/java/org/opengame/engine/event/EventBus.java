@@ -2,10 +2,7 @@ package org.opengame.engine.event;
 
 import lombok.extern.java.Log;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -15,13 +12,13 @@ import java.util.function.Consumer;
 public enum EventBus {
     INSTANCE;
 
-    private final Map<EventType, List<Consumer<EventData>>> eventListeners;
+    private final Map<EventType, List<Consumer<Object>>> eventListeners;
 
     EventBus() {
         eventListeners = new HashMap<>();
     }
 
-    public static void subscribeToEvent(EventType eventType, Consumer<EventData> consumer) {
+    public static void subscribeToEvent(EventType eventType, Consumer<Object> consumer) {
         log.info("Subscribed to " + eventType);
 
         if (!INSTANCE.eventListeners.containsKey(eventType)) {
@@ -31,7 +28,7 @@ public enum EventBus {
         INSTANCE.eventListeners.get(eventType).add(consumer);
     }
 
-    public static void broadcastEvent(EventType eventType, EventData data) {
+    public static void broadcastEvent(EventType eventType, Object data) {
         //log.warning("Event broadcast " + eventType);
 
         if (!INSTANCE.eventListeners.containsKey(eventType)) return;

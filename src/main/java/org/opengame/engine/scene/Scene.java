@@ -5,6 +5,8 @@ import lombok.Setter;
 import lombok.extern.java.Log;
 import org.opengame.engine.camera.Camera;
 import org.opengame.engine.camera.FlyingCamera;
+import org.opengame.engine.event.EventBus;
+import org.opengame.engine.event.EventType;
 import org.opengame.engine.object.SceneObject;
 
 import java.util.Vector;
@@ -30,17 +32,19 @@ public class Scene {
 
     public void add(SceneObject mesh) {
         objects.add(mesh);
+        EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, mesh);
     }
     public void add(Model model) {
-        objects.addAll(model.getMeshes());
+        objects.add(model);
+        EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, model);
     }
 
     public void render(float time, float frameTime) {
         objects.forEach((mesh) -> mesh.frame(time, frameTime));
     }
 
-    public void update() {
-        objects.forEach(SceneObject::update);
+    public void update(float time, float tickTime) {
+        objects.forEach((obj) -> obj.update(time, tickTime));
     }
 
     public void setCamera(Camera camera) {
@@ -48,6 +52,8 @@ public class Scene {
             objects.remove(camera);
         }
         this.camera = camera;
+        camera.setViewProjection();
+        EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, camera);
         objects.add(camera);
     }
 

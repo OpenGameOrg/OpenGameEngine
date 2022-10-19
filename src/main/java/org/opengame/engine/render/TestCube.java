@@ -2,6 +2,7 @@ package org.opengame.engine.render;
 
 import lombok.Getter;
 import org.opengame.engine.scene.Mesh;
+import org.opengame.engine.scene.MeshInfo;
 
 import java.io.IOException;
 
@@ -12,7 +13,7 @@ import java.io.IOException;
 public class TestCube extends Mesh {
 
     public TestCube() throws IOException {
-        super(getTestVertices(), getTestIndices(), "vs_cube", "fs_cube", null);
+        super(MeshInfo.builder().vertexData(getTestVertices()).indexData(getTestIndices()).build());
     }
 
     private static Object[][] getTestVertices() {

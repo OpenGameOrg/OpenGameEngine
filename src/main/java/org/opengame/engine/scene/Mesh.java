@@ -1,18 +1,16 @@
 package org.opengame.engine.scene;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.java.Log;
-import lombok.extern.log4j.Log4j2;
 import org.joml.Matrix4x3f;
-import org.joml.Vector3f;
 import org.lwjgl.bgfx.BGFXMemory;
 import org.lwjgl.bgfx.BGFXReleaseFunctionCallback;
 import org.lwjgl.bgfx.BGFXVertexLayout;
 import org.lwjgl.system.MemoryUtil;
 import org.opengame.engine.Engine;
-import org.opengame.engine.object.SceneObject;
+import org.opengame.engine.object.MaterialObject;
 
+import java.awt.*;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -28,11 +26,10 @@ import static org.lwjgl.system.MemoryUtil.*;
  * Base class for all meshes
  */
 @Log
-public class Mesh extends SceneObject {
-    private static final int VERTEX_SIZE = (5 * 4);
+public class Mesh extends MaterialObject {
     private static BGFXReleaseFunctionCallback releaseMemoryCb =
             BGFXReleaseFunctionCallback.create((_ptr, _userData) -> nmemFree(_ptr));
-    private static final String TEST_TEXTURE = "test.dds";
+    private static final String TEST_TEXTURE = "textures/test.dds";
 
     private final ByteBuffer vertices;
     private final ByteBuffer indices;
@@ -46,45 +43,52 @@ public class Mesh extends SceneObject {
     private final short indexBuffer;
     private final BGFXVertexLayout layout;
     private final short program;
+
     private short texture;
-    private short textureUniform;
+    private short textureUniform = -1;
+    private float[] colorBuf;
+    private short colorUniform = -1;
+    private long drawType;
+
+    private int vertexSize;
 
     private final Matrix4x3f model = new Matrix4x3f();
     private final FloatBuffer modelBuffer;
 
-    @Getter
-    @Setter
-    private Vector3f position;
-    @Getter
-    @Setter
-    private Vector3f rotation;
+    public Mesh(MeshInfo info) throws IOException {
+        this.vertexSize = info.isVertexWithColor() ? 4 * 4 : info.isUseTexture() ? 4 * 5 : 4 * 3;
+        this.drawType = info.getDrawType();
 
-    public Mesh(Object[][] vertexData, int[] indexData, String vertexShaderName,
-                String fragmentShaderName, String textureFileName) throws IOException {
-        position = new Vector3f();
-        rotation = new Vector3f();
+        layout = createVertexLayout(false, info.isVertexWithColor(), info.isUseTexture());
+        vertexCount = info.getVertexData().length;
+        vertices = memAlloc(info.getVertexData().length * vertexSize);
+        vertexBuffer = createVertexBuffer(vertices, layout, info.getVertexData());
+        indexCount = info.getIndexData().length;
+        indices = memAlloc(info.getIndexData().length * 2);
+        indexBuffer = createIndexBuffer(indices, info.getIndexData());
 
-        layout = createVertexLayout(false, false, true);
-        vertexCount = vertexData.length;
-        vertices = memAlloc(vertexData.length * VERTEX_SIZE);
-        vertexBuffer = createVertexBuffer(vertices, layout, vertexData);
-        indexCount = indexData.length;
-        indices = memAlloc(indexData.length * 2);
-        indexBuffer = createIndexBuffer(indices, indexData);
-        texture = loadTexture(textureFileName == null ? TEST_TEXTURE : textureFileName);
-        textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
-
-        if (vertexShaderName != null && fragmentShaderName != null) {
-            short vertexShader = loadShader(vertexShaderName);
-            short fragmentShader = loadShader(fragmentShaderName);
-
-            this.program = bgfx_create_program(vertexShader, fragmentShader, true);
+        if (info.getTextureFileName() != null) {
+            texture = loadTexture(info.getTextureFileName());
+            textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
         } else {
-            // default shader
-            this.program = 0;
+            texture = -1;
+            textureUniform = -1;
+        }
+        if (info.getColor() != null) {
+            colorBuf = createBufferForColor(info.getColor());
+            colorUniform = bgfx_create_uniform("s_color", BGFX_UNIFORM_TYPE_VEC4, 1);
         }
 
+        program = loadShaderProgram(info);
+
         modelBuffer = MemoryUtil.memAllocFloat(16);
+    }
+
+    private float[] createBufferForColor(Color color) {
+        var components = color.getRGBColorComponents(new float[4]);
+        components[3] = color.getAlpha() * 1.0f / 255f;
+
+        return components;
     }
 
     /**
@@ -143,6 +147,18 @@ public class Mesh extends SceneObject {
         return bgfx_create_index_buffer(Objects.requireNonNull(bgfx_make_ref(buffer)), BGFX_BUFFER_NONE);
     }
 
+    private short loadShaderProgram(MeshInfo info) throws IOException {
+        if (info.getVertexShaderName() != null && info.getFragmentShaderName() != null) {
+            short vertexShader = loadShader(info.getVertexShaderName());
+            short fragmentShader = loadShader(info.getFragmentShaderName());
+
+            return bgfx_create_program(vertexShader, fragmentShader, true);
+        } else {
+            // default shader
+            return 0;
+        }
+    }
+
     private short loadShader(String shaderName) throws IOException {
         String resourcePath = Engine.getWorkingDirectory() + "shaders/";
 
@@ -176,7 +192,7 @@ public class Mesh extends SceneObject {
     }
 
     private short loadTexture(String fileName) throws IOException {
-        var textureDirPath = Engine.getWorkingDirectory() + "textures/";
+        var textureDirPath = Engine.getWorkingDirectory();
         ByteBuffer textureData = loadResource(textureDirPath + fileName);
         BGFXMemory textureMemory = bgfx_make_ref_release(textureData, releaseMemoryCb, NULL);
 
@@ -213,8 +229,10 @@ public class Mesh extends SceneObject {
     }
 
     public void setTexture(String textureName) throws IOException {
-        bgfx_destroy_texture(texture);
-        bgfx_destroy_uniform(textureUniform);
+        if (texture != -1) {
+            bgfx_destroy_texture(texture);
+            bgfx_destroy_uniform(textureUniform);
+        }
 
         texture = loadTexture(textureName);
         textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
@@ -227,19 +245,26 @@ public class Mesh extends SceneObject {
 
         long encoder = bgfx_encoder_begin(false);
         bgfx_encoder_set_transform(encoder,
-                model.translation(position)
-                        .rotateXYZ(rotation)
+                model.translation(getPosition())
+                        .rotateXYZ(getRotation())
+                        .scale(getScale())
                         .get4x4(modelBuffer));
 
         bgfx_encoder_set_vertex_buffer(encoder, 0, vertexBuffer, 0, vertexCount);
         bgfx_encoder_set_index_buffer(encoder, indexBuffer, 0, indexCount);
 
-        bgfx_encoder_set_texture(encoder, 0, textureUniform, texture, 0xffffffff);
+        if (texture != -1) {
+            bgfx_encoder_set_texture(encoder, 0, textureUniform, texture, 0xffffffff);
+        }
+        if (colorUniform != -1) {
+            bgfx_encoder_set_uniform(encoder, colorUniform, colorBuf,1);
+        }
 
         bgfx_encoder_set_state(encoder, BGFX_STATE_WRITE_RGB
                 | BGFX_STATE_WRITE_A
                 | BGFX_STATE_WRITE_Z
                 | BGFX_STATE_DEPTH_TEST_LESS
+                | drawType
                 | BGFX_STATE_MSAA, 0);
 
         bgfx_encoder_submit(encoder, 0, program, 0, 0);
@@ -250,11 +275,17 @@ public class Mesh extends SceneObject {
         MemoryUtil.memFree(modelBuffer);
 
         bgfx_destroy_program(program);
-        bgfx_destroy_texture(texture);
-        bgfx_destroy_uniform(textureUniform);
+
+        if (textureUniform != -1) {
+            bgfx_destroy_texture(texture);
+            bgfx_destroy_uniform(textureUniform);
+        }
+        if (colorUniform != -1) {
+            bgfx_destroy_uniform(colorUniform);
+        }
 
         bgfx_destroy_index_buffer(indexBuffer);
+        bgfx_destroy_vertex_buffer(vertexBuffer);
         MemoryUtil.memFree(indices);
     }
-
 }

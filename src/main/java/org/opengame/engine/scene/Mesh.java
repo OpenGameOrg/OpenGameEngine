@@ -1,8 +1,10 @@
 package org.opengame.engine.scene;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.java.Log;
 import org.joml.Matrix4x3f;
+import org.joml.Vector3f;
 import org.lwjgl.bgfx.BGFXMemory;
 import org.lwjgl.bgfx.BGFXReleaseFunctionCallback;
 import org.lwjgl.bgfx.BGFXVertexLayout;
@@ -31,13 +33,19 @@ public class Mesh extends MaterialObject {
             BGFXReleaseFunctionCallback.create((_ptr, _userData) -> nmemFree(_ptr));
     private static final String TEST_TEXTURE = "textures/test.dds";
 
-    private final ByteBuffer vertices;
-    private final ByteBuffer indices;
+    @Getter
+    @Setter
+    private ByteBuffer vertices;
+    @Getter
+    @Setter
+    private ByteBuffer indices;
 
     @Getter
-    private final int vertexCount;
+    @Setter
+    private int vertexCount;
     @Getter
-    private final int indexCount;
+    @Setter
+    private int indexCount;
 
     private final short vertexBuffer;
     private final short indexBuffer;
@@ -53,6 +61,7 @@ public class Mesh extends MaterialObject {
     private int vertexSize;
 
     private final Matrix4x3f model = new Matrix4x3f();
+
     private final FloatBuffer modelBuffer;
 
     public Mesh(MeshInfo info) throws IOException {

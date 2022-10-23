@@ -17,6 +17,15 @@ import static org.lwjgl.assimp.Assimp.aiProcess_OptimizeMeshes;
 @Log
 public class MeshLoader {
     public static List<Mesh> loadMeshes(String modelPath) throws IOException {
+        var defaultMeshInfo = MeshInfo.builder()
+                .useTexture(true)
+                .vertexShaderName("vs_simple_textured")
+                .fragmentShaderName("fs_simple_textured").build();
+
+        return loadMeshes(modelPath, defaultMeshInfo);
+    }
+
+    public static List<Mesh> loadMeshes(String modelPath, MeshInfo meshInfo) throws IOException {
         AIScene scene = aiImportFile(modelPath, aiProcess_OptimizeMeshes);
 
         if (scene == null) {
@@ -30,7 +39,7 @@ public class MeshLoader {
         var meshesBuffer = scene.mMeshes();
         var meshes = new ArrayList<Mesh>();
         for (int i = 0; i < scene.mNumMeshes(); i++) {
-            meshes.add(createMesh(AIMesh.create(meshesBuffer.get(i))));
+            meshes.add(createMesh(AIMesh.create(meshesBuffer.get(i)), meshInfo));
         }
 
         return meshes;
@@ -40,7 +49,7 @@ public class MeshLoader {
         return new Model(loadMeshes(modelPath));
     }
 
-    private static Mesh createMesh(AIMesh aiMesh) throws IOException {
+    private static Mesh createMesh(AIMesh aiMesh, MeshInfo meshInfo) throws IOException {
         var vertices = aiMesh.mVertices();
         var texCoords = aiMesh.mTextureCoords(0);
 
@@ -49,7 +58,10 @@ public class MeshLoader {
         var meshVertices = new Object[aiMesh.mNumVertices()][5];
         for (int i = 0; i < meshVertices.length; i++) {
             var vert = vertices.get(i);
-            meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(), texCoords.get(i).x(), texCoords.get(i).y()};
+            meshVertices[i] = meshInfo.isUseTexture() ?
+                    new Object[]{ vert.x(), vert.y(), vert.z(), texCoords.get(i).x(), texCoords.get(i).y()}
+                    :
+                    new Object[]{ vert.x(), vert.y(), vert.z() };
         }
 
         var faces = aiMesh.mFaces();
@@ -64,9 +76,9 @@ public class MeshLoader {
         return new Mesh(MeshInfo.builder()
                 .vertexData(meshVertices)
                 .indexData(meshIndices)
-                .useTexture(true)
-                .vertexShaderName("vs_simple_textured")
-                .fragmentShaderName("fs_simple_textured").build()
-        );
+                .useTexture(meshInfo.isUseTexture())
+                .vertexShaderName(meshInfo.getVertexShaderName())
+                .fragmentShaderName(meshInfo.getFragmentShaderName())
+                .color(meshInfo.getColor()).build());
     }
 }

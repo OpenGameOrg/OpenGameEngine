@@ -15,8 +15,8 @@ import static org.lwjgl.bgfx.BGFX.BGFX_STATE_PT_TRISTRIP;
 @Getter
 @Setter
 public class MeshInfo {
-    private final Object[][] vertexData;
-    private final int[] indexData;
+    private Object[][] vertexData;
+    private int[] indexData;
     private String vertexShaderName;
     private String fragmentShaderName;
     private String textureFileName;

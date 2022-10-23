@@ -20,10 +20,14 @@ import java.util.Vector;
 public class Scene {
     private String name;
     private final Vector<SceneObject> objects;
+    private final Vector<SceneObject> objectsToAdd;
+    private final Vector<SceneObject> objectsToRemove;
     private Camera camera;
 
     public Scene() {
         objects = new Vector<>();
+        objectsToAdd = new Vector<>();
+        objectsToRemove = new Vector<>();
         setCamera(FlyingCamera.createDefault());
         name = "TestScene";
 
@@ -31,12 +35,16 @@ public class Scene {
     }
 
     public void add(SceneObject mesh) {
-        objects.add(mesh);
+        objectsToAdd.add(mesh);
         EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, mesh);
     }
     public void add(Model model) {
-        objects.add(model);
+        objectsToAdd.add(model);
         EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, model);
+    }
+
+    public void remove(SceneObject object) {
+        objectsToRemove.add(object);
     }
 
     public void render(float time, float frameTime) {
@@ -44,6 +52,10 @@ public class Scene {
     }
 
     public void update(float time, float tickTime) {
+        objects.removeAll(objectsToRemove);
+        objects.addAll(objectsToAdd);
+        objectsToAdd.clear();
+        objectsToRemove.clear();
         objects.forEach((obj) -> obj.update(time, tickTime));
     }
 
@@ -54,7 +66,7 @@ public class Scene {
         this.camera = camera;
         camera.setViewProjection();
         EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, camera);
-        objects.add(camera);
+        objectsToAdd.add(camera);
     }
 
     public String getStats() {

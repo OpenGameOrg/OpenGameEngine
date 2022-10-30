@@ -70,35 +70,10 @@ public class LineStrip extends Model {
         getMeshes().add(mesh);
         getPoints().add(point);
 
-        var zDiff = point.z - lastPoint.z;
-        var yDiff = point.y - lastPoint.y;
-        var xDiff = point.x - lastPoint.x;
-        var direction = new Vector3f(zDiff, yDiff, xDiff);
+        lastMesh.lookAt(mesh.getPosition());
+        //mesh.lookAt(lastMesh.getPosition());
 
-        //lastMesh.setLookAtVector(mesh.getPosition());
-        //mesh.setLookAtVector(new Vector3f(mesh.getPosition().x + direction.x,
-                //mesh.getPosition().y + direction.y, mesh.getPosition().z + direction.z));
-
-        var mainAxis = 0;
-        var maxDiff = xDiff;
-        if (yDiff > maxDiff) {
-            maxDiff = yDiff;
-            mainAxis = 1;
-        }
-        if (zDiff > maxDiff) {
-            mainAxis = 2;
-        }
-
-        var length = new Vector3f(xDiff, yDiff, zDiff).length();
-        if (mainAxis == 0) {
-            //lastMesh.setScale(new Vector3f(width, length, width));
-        }
-        if (mainAxis == 1) {
-            //lastMesh.setScale(new Vector3f(length, width, width));
-        }
-        if (mainAxis == 2) {
-            //lastMesh.setScale(new Vector3f(width, width, length));
-        }
+        lastMesh.setScale(new Vector3f(width, width * 2, width));
 
         if (points.size() > 100) {
             points.remove(0);

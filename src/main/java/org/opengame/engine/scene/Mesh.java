@@ -3,8 +3,7 @@ package org.opengame.engine.scene;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.java.Log;
-import org.joml.Matrix4x3f;
-import org.joml.Vector3f;
+import org.joml.*;
 import org.lwjgl.bgfx.BGFXMemory;
 import org.lwjgl.bgfx.BGFXReleaseFunctionCallback;
 import org.lwjgl.bgfx.BGFXVertexLayout;
@@ -20,7 +19,9 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Vector;
 
+import static org.joml.Math.*;
 import static org.lwjgl.bgfx.BGFX.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
@@ -61,6 +62,7 @@ public class Mesh extends MaterialObject {
     private int vertexSize;
 
     private final Matrix4x3f model = new Matrix4x3f();
+    private Quaternionf orientation = new Quaternionf();
 
     private final FloatBuffer modelBuffer;
 
@@ -247,17 +249,27 @@ public class Mesh extends MaterialObject {
         textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
     }
 
+    public void lookAt(Vector3f lookAt) {
+       var targetDir = new Vector3f(lookAt.x - getPosition().x,
+                lookAt.y - getPosition().y,
+                lookAt.z - getPosition().z).normalize();
+       var currentDir = new Vector3f(0, 1, 0).rotate(orientation);
+
+        orientation.rotationTo(currentDir, targetDir);
+    }
+
     @Override
     public void frame(float time, float frameTime) {
         bgfx_dbg_text_printf(0, 2, 0x6f, "OpenGameEngine 0.0.1-SNAPSHOT");
         bgfx_dbg_text_printf(0, 3, 0x0f, String.format("Frame: %7.3f[ms]", frameTime));
 
         long encoder = bgfx_encoder_begin(false);
+
         bgfx_encoder_set_transform(encoder,
-                model.translation(getPosition())
-                        .rotateXYZ(getRotation())
-                        .scale(getScale())
-                        .get4x4(modelBuffer));
+                    model.translation(getPosition())
+                            .rotate(orientation)
+                            .scale(getScale())
+                            .get4x4(modelBuffer));
 
         bgfx_encoder_set_vertex_buffer(encoder, 0, vertexBuffer, 0, vertexCount);
         bgfx_encoder_set_index_buffer(encoder, indexBuffer, 0, indexCount);

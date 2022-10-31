@@ -23,5 +23,6 @@ public class MeshInfo {
     private Color color;
     private boolean vertexWithColor = false;
     private boolean useTexture = true;
+    private boolean useNormals = false;
     private long drawType = BGFX_STATE_PT_TRISTRIP;
 }

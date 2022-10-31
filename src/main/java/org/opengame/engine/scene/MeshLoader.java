@@ -19,8 +19,9 @@ public class MeshLoader {
     public static List<Mesh> loadMeshes(String modelPath) throws IOException {
         var defaultMeshInfo = MeshInfo.builder()
                 .useTexture(true)
-                .vertexShaderName("vs_simple_textured")
-                .fragmentShaderName("fs_simple_textured").build();
+                .useNormals(true)
+                .vertexShaderName("vs_textured")
+                .fragmentShaderName("fs_textured").build();
 
         return loadMeshes(modelPath, defaultMeshInfo);
     }
@@ -52,16 +53,32 @@ public class MeshLoader {
     private static Mesh createMesh(AIMesh aiMesh, MeshInfo meshInfo) throws IOException {
         var vertices = aiMesh.mVertices();
         var texCoords = aiMesh.mTextureCoords(0);
+        var normals = aiMesh.mNormals();
 
         assert texCoords != null;
 
-        var meshVertices = new Object[aiMesh.mNumVertices()][5];
-        for (int i = 0; i < meshVertices.length; i++) {
+        int size = 3;
+        if (meshInfo.isUseTexture()) {
+            size += 2;
+        }
+        if (meshInfo.isUseNormals()) {
+            size += 3;
+        }
+        var meshVertices = new Object[aiMesh.mNumVertices()][size];;
+        for (int i = 0; i < aiMesh.mNumVertices(); i++) {
             var vert = vertices.get(i);
-            meshVertices[i] = meshInfo.isUseTexture() ?
-                    new Object[]{ vert.x(), vert.y(), vert.z(), texCoords.get(i).x(), texCoords.get(i).y()}
-                    :
-                    new Object[]{ vert.x(), vert.y(), vert.z() };
+            if (meshInfo.isUseTexture()) {
+                if (meshInfo.isUseNormals()) {
+                    meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(),
+                            texCoords.get(i).x(), texCoords.get(i).y(),
+                            normals.get(i).x(), normals.get(i).y(), normals.get(i).z()};
+                } else {
+                    meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(),
+                            texCoords.get(i).x(), texCoords.get(i).y()};
+                }
+            } else {
+                meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z() };
+            }
         }
 
         var faces = aiMesh.mFaces();
@@ -76,6 +93,7 @@ public class MeshLoader {
         return new Mesh(MeshInfo.builder()
                 .vertexData(meshVertices)
                 .indexData(meshIndices)
+                .useNormals(meshInfo.isUseNormals())
                 .useTexture(meshInfo.isUseTexture())
                 .vertexShaderName(meshInfo.getVertexShaderName())
                 .fragmentShaderName(meshInfo.getFragmentShaderName())

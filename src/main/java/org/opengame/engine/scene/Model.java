@@ -1,6 +1,7 @@
 package org.opengame.engine.scene;
 
 import lombok.Getter;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.opengame.engine.object.MaterialObject;
 import org.opengame.engine.object.Renderable;
@@ -24,6 +25,13 @@ public class Model extends MaterialObject {
         super.setRotation(setRotation);
         meshes.forEach((mesh) -> mesh.setRotation(setRotation));
     }
+
+    @Override
+    public void setOrientation(Quaternionf orientation) {
+        super.setOrientation(orientation);
+        meshes.forEach((mesh) -> mesh.setOrientation(orientation));
+    }
+
     public void setPosition(Vector3f position) {
         super.setPosition(position);
         meshes.forEach((mesh) -> mesh.setPosition(position));

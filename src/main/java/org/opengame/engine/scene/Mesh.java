@@ -62,15 +62,15 @@ public class Mesh extends MaterialObject {
     private int vertexSize;
 
     private final Matrix4x3f model = new Matrix4x3f();
-    private Quaternionf orientation = new Quaternionf();
 
     private final FloatBuffer modelBuffer;
 
     public Mesh(MeshInfo info) throws IOException {
         this.vertexSize = info.isVertexWithColor() ? 4 * 4 : info.isUseTexture() ? 4 * 5 : 4 * 3;
+        if (info.isUseNormals()) vertexSize += 3 * 4;
         this.drawType = info.getDrawType();
 
-        layout = createVertexLayout(false, info.isVertexWithColor(), info.isUseTexture());
+        layout = createVertexLayout(info.isUseNormals(), info.isVertexWithColor(), info.isUseTexture());
         vertexCount = info.getVertexData().length;
         vertices = memAlloc(info.getVertexData().length * vertexSize);
         vertexBuffer = createVertexBuffer(vertices, layout, info.getVertexData());
@@ -115,14 +115,14 @@ public class Mesh extends MaterialObject {
         bgfx_vertex_layout_begin(layout, Engine.getRenderer());
         bgfx_vertex_layout_add(layout, BGFX_ATTRIB_POSITION, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
 
-        if (withNormals) {
-            bgfx_vertex_layout_add(layout, BGFX_ATTRIB_NORMAL, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
-        }
         if (withColor) {
             bgfx_vertex_layout_add(layout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, false);
         }
         if (withTexture) {
             bgfx_vertex_layout_add(layout, BGFX_ATTRIB_TEXCOORD0, 2, BGFX_ATTRIB_TYPE_FLOAT, true, true);
+        }
+        if (withNormals) {
+            bgfx_vertex_layout_add(layout, BGFX_ATTRIB_NORMAL, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
         }
 
         bgfx_vertex_layout_end(layout);
@@ -253,9 +253,9 @@ public class Mesh extends MaterialObject {
        var targetDir = new Vector3f(lookAt.x - getPosition().x,
                 lookAt.y - getPosition().y,
                 lookAt.z - getPosition().z).normalize();
-       var currentDir = new Vector3f(0, 1, 0).rotate(orientation);
+       var currentDir = new Vector3f(0, 1, 0).rotate(getOrientation());
 
-        orientation.rotationTo(currentDir, targetDir);
+        getOrientation().rotationTo(currentDir, targetDir);
     }
 
     @Override
@@ -267,7 +267,7 @@ public class Mesh extends MaterialObject {
 
         bgfx_encoder_set_transform(encoder,
                     model.translation(getPosition())
-                            .rotate(orientation)
+                            .rotate(getOrientation())
                             .scale(getScale())
                             .get4x4(modelBuffer));
 

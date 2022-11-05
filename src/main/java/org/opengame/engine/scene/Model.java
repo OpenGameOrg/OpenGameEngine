@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.util.List;
 
 public class Model extends MaterialObject {
+    private boolean shadingEnabled = true;
+
     private String model;
     @Getter
     private List<Mesh> meshes;

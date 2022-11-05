@@ -1,9 +1,12 @@
-$input v_normal, v_texcoord0, v_position
+$input v_normal, v_position
 
 #include "../common/common.sh"
 
-SAMPLER2D(s_texColor,  0);
+uniform vec4 u_color;
 uniform vec4 u_camPos;
+uniform vec4 u_diffuseColor;
+uniform vec4 u_specColor;
+uniform vec4 u_ambienceColor;
 
 void main()
 {
@@ -14,13 +17,9 @@ void main()
 
     float diffuse = max(dot(normal, lightDirection), 0);
 
-    float specIntensity = 0.5f;
     vec3 viewDir = normalize(v_position - u_camPos.xyz);
     vec3 reflectionDir = reflect(lightDirection, normal);
     float specAmount = pow(max(dot(viewDir, reflectionDir), 0), 8);
-    float specular = specAmount * specIntensity;
 
-    vec4 color = toLinear(texture2D(s_texColor, v_texcoord0));
-
-    gl_FragColor = color * mul(lightColor, diffuse + 0.2 + specular);
+    gl_FragColor = u_color * (diffuse * u_diffuseColor + specAmount * u_specColor + u_ambienceColor);
 }

@@ -9,7 +9,9 @@ import org.lwjgl.bgfx.BGFXReleaseFunctionCallback;
 import org.lwjgl.bgfx.BGFXVertexLayout;
 import org.lwjgl.system.MemoryUtil;
 import org.opengame.engine.Engine;
+import org.opengame.engine.camera.Camera;
 import org.opengame.engine.object.MaterialObject;
+import org.opengame.engine.render.Material;
 
 import java.awt.*;
 import java.io.BufferedInputStream;
@@ -17,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Vector;
@@ -43,6 +46,10 @@ public class Mesh extends MaterialObject {
 
     @Getter
     @Setter
+    private Material[] materials;
+
+    @Getter
+    @Setter
     private int vertexCount;
     @Getter
     @Setter
@@ -53,10 +60,16 @@ public class Mesh extends MaterialObject {
     private final BGFXVertexLayout layout;
     private final short program;
 
-    private short texture;
     private short textureUniform = -1;
-    private float[] colorBuf;
     private short colorUniform = -1;
+    private short camPosUniform = -1;
+    private short ambienceColorUniform = -1;
+    private short diffuseColorUniform = -1;
+    private short specColorUniform = -1;
+    private short specCoeffUniform = -1;
+    private short texture;
+
+    private float[] colorBuf;
     private long drawType;
 
     private int vertexSize;
@@ -66,8 +79,12 @@ public class Mesh extends MaterialObject {
     private final FloatBuffer modelBuffer;
 
     public Mesh(MeshInfo info) throws IOException {
+        this.materials = info.getMaterials();
+
         this.vertexSize = info.isVertexWithColor() ? 4 * 4 : info.isUseTexture() ? 4 * 5 : 4 * 3;
-        if (info.isUseNormals()) vertexSize += 3 * 4;
+        if (info.isUseNormals()) {
+            vertexSize += 3 * 4;
+        }
         this.drawType = info.getDrawType();
 
         layout = createVertexLayout(info.isUseNormals(), info.isVertexWithColor(), info.isUseTexture());
@@ -87,8 +104,15 @@ public class Mesh extends MaterialObject {
         }
         if (info.getColor() != null) {
             colorBuf = createBufferForColor(info.getColor());
-            colorUniform = bgfx_create_uniform("s_color", BGFX_UNIFORM_TYPE_VEC4, 1);
+            colorUniform = bgfx_create_uniform("u_color", BGFX_UNIFORM_TYPE_VEC4, 1);
         }
+        if (info.isUseNormals()) {
+            diffuseColorUniform = bgfx_create_uniform("u_diffuseColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+            specColorUniform = bgfx_create_uniform("u_specColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+            ambienceColorUniform = bgfx_create_uniform("u_ambienceColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+        }
+
+        camPosUniform = bgfx_create_uniform("u_camPos", BGFX_UNIFORM_TYPE_VEC4, 1);
 
         program = loadShaderProgram(info);
 
@@ -279,6 +303,15 @@ public class Mesh extends MaterialObject {
         }
         if (colorUniform != -1) {
             bgfx_encoder_set_uniform(encoder, colorUniform, colorBuf,1);
+        }
+        if (camPosUniform != -1) {
+            var cameraPos = Engine.getCurrentScene().getCamera().getPosition();
+            bgfx_encoder_set_uniform(encoder, camPosUniform, new float[] {cameraPos.x, cameraPos.y, cameraPos.z, 1.0f}, 1);
+        }
+        if (ambienceColorUniform != -1) {
+            bgfx_encoder_set_uniform(encoder, ambienceColorUniform, materials[0].getAmbienceColor(), 1);
+            bgfx_encoder_set_uniform(encoder, diffuseColorUniform, materials[0].getDiffuseColor(), 1);
+            bgfx_encoder_set_uniform(encoder, specColorUniform, materials[0].getSpecularColor(), 1);
         }
 
         bgfx_encoder_set_state(encoder, BGFX_STATE_WRITE_RGB

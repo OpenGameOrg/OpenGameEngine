@@ -3,6 +3,7 @@ package org.opengame.engine.scene;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.opengame.engine.render.Material;
 
 import java.awt.*;
 
@@ -25,4 +26,5 @@ public class MeshInfo {
     private boolean useTexture = true;
     private boolean useNormals = false;
     private long drawType = BGFX_STATE_PT_TRISTRIP;
+    private Material[] materials;
 }

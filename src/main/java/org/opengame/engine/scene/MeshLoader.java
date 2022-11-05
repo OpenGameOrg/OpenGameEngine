@@ -1,8 +1,11 @@
 package org.opengame.engine.scene;
 
 import lombok.extern.java.Log;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.assimp.AIMaterial;
 import org.lwjgl.assimp.AIMesh;
 import org.lwjgl.assimp.AIScene;
+import org.opengame.engine.render.Material;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,7 +43,7 @@ public class MeshLoader {
         var meshesBuffer = scene.mMeshes();
         var meshes = new ArrayList<Mesh>();
         for (int i = 0; i < scene.mNumMeshes(); i++) {
-            meshes.add(createMesh(AIMesh.create(meshesBuffer.get(i)), meshInfo));
+            meshes.add(createMesh(AIMesh.create(meshesBuffer.get(i)), meshInfo, scene.mMaterials()));
         }
 
         return meshes;
@@ -50,7 +53,11 @@ public class MeshLoader {
         return new Model(loadMeshes(modelPath));
     }
 
-    private static Mesh createMesh(AIMesh aiMesh, MeshInfo meshInfo) throws IOException {
+    public static Model loadModel(String modelPath, MeshInfo info) throws IOException {
+        return new Model(loadMeshes(modelPath, info));
+    }
+
+    private static Mesh createMesh(AIMesh aiMesh, MeshInfo meshInfo, PointerBuffer materials) throws IOException {
         var vertices = aiMesh.mVertices();
         var texCoords = aiMesh.mTextureCoords(0);
         var normals = aiMesh.mNormals();
@@ -77,7 +84,12 @@ public class MeshLoader {
                             texCoords.get(i).x(), texCoords.get(i).y()};
                 }
             } else {
-                meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z() };
+                if (meshInfo.isUseNormals()) {
+                    meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(),
+                            normals.get(i).x(), normals.get(i).y(), normals.get(i).z()};
+                } else {
+                    meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z() };
+                }
             }
         }
 
@@ -90,11 +102,14 @@ public class MeshLoader {
             meshIndices[i * 3 + 2] = face.mIndices().get(2);
         }
 
+        var material = Material.from(AIMaterial.create(materials.get(aiMesh.mMaterialIndex())));
+
         return new Mesh(MeshInfo.builder()
                 .vertexData(meshVertices)
                 .indexData(meshIndices)
                 .useNormals(meshInfo.isUseNormals())
                 .useTexture(meshInfo.isUseTexture())
+                .materials(new Material[] { material })
                 .vertexShaderName(meshInfo.getVertexShaderName())
                 .fragmentShaderName(meshInfo.getFragmentShaderName())
                 .color(meshInfo.getColor()).build());

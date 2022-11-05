@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.joml.Vector2f;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.bgfx.BGFXInit;
+import org.lwjgl.bgfx.BGFXResolution;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWNativeCocoa;
 import org.lwjgl.glfw.GLFWNativeWin32;
@@ -67,7 +68,7 @@ public class Engine {
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
         windowHandle = glfwCreateWindow(config.getWindowWidth(), config.getWindowHeight(),
-                config.getAppName(), NULL, NULL);
+                config.getAppName(), config.isFullScreenMode() ? glfwGetPrimaryMonitor() : NULL, NULL);
 
         setupInputCallbacks();
 

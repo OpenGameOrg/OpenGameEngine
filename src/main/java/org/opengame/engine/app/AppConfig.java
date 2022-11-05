@@ -26,6 +26,8 @@ public class AppConfig {
     private int windowWidth = 800;
     private int windowHeight = 600;
 
+    private boolean fullScreenMode = false;
+
    // private int fpsLimit = -1;
     private int ups = 40;
 

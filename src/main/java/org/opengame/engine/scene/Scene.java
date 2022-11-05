@@ -9,6 +9,7 @@ import org.opengame.engine.event.EventBus;
 import org.opengame.engine.event.EventType;
 import org.opengame.engine.object.SceneObject;
 
+import java.awt.*;
 import java.util.Vector;
 
 /**
@@ -23,6 +24,7 @@ public class Scene {
     private final Vector<SceneObject> objectsToAdd;
     private final Vector<SceneObject> objectsToRemove;
     private Camera camera;
+    private Color skyboxColor;
 
     public Scene() {
         objects = new Vector<>();
@@ -85,5 +87,9 @@ public class Scene {
             return 0;
         }).sum();
         return "[meshes: " + objects.size() + "; vertices: " + vertexCount + "; indices: " + indexCount + "]";
+    }
+
+    public Color getSkyboxColor() {
+        return skyboxColor;
     }
 }

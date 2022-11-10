@@ -5,8 +5,11 @@ import lombok.Setter;
 import lombok.extern.java.Log;
 import org.opengame.engine.camera.Camera;
 import org.opengame.engine.camera.FlyingCamera;
+import org.opengame.engine.event.EventBus;
+import org.opengame.engine.event.EventType;
 import org.opengame.engine.object.SceneObject;
 
+import java.awt.*;
 import java.util.Vector;
 
 /**
@@ -18,10 +21,15 @@ import java.util.Vector;
 public class Scene {
     private String name;
     private final Vector<SceneObject> objects;
+    private final Vector<SceneObject> objectsToAdd;
+    private final Vector<SceneObject> objectsToRemove;
     private Camera camera;
+    private Color skyboxColor;
 
     public Scene() {
         objects = new Vector<>();
+        objectsToAdd = new Vector<>();
+        objectsToRemove = new Vector<>();
         setCamera(FlyingCamera.createDefault());
         name = "TestScene";
 
@@ -29,18 +37,28 @@ public class Scene {
     }
 
     public void add(SceneObject mesh) {
-        objects.add(mesh);
+        objectsToAdd.add(mesh);
+        EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, mesh);
     }
     public void add(Model model) {
-        objects.addAll(model.getMeshes());
+        objectsToAdd.add(model);
+        EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, model);
+    }
+
+    public void remove(SceneObject object) {
+        objectsToRemove.add(object);
     }
 
     public void render(float time, float frameTime) {
         objects.forEach((mesh) -> mesh.frame(time, frameTime));
     }
 
-    public void update() {
-        objects.forEach(SceneObject::update);
+    public void update(float time, float tickTime) {
+        objects.removeAll(objectsToRemove);
+        objects.addAll(objectsToAdd);
+        objectsToAdd.clear();
+        objectsToRemove.clear();
+        objects.forEach((obj) -> obj.update(time, tickTime));
     }
 
     public void setCamera(Camera camera) {
@@ -48,7 +66,9 @@ public class Scene {
             objects.remove(camera);
         }
         this.camera = camera;
-        objects.add(camera);
+        camera.setViewProjection();
+        EventBus.broadcastEvent(EventType.OBJECT_ADDED_TO_SCENE, camera);
+        objectsToAdd.add(camera);
     }
 
     public String getStats() {
@@ -67,5 +87,9 @@ public class Scene {
             return 0;
         }).sum();
         return "[meshes: " + objects.size() + "; vertices: " + vertexCount + "; indices: " + indexCount + "]";
+    }
+
+    public Color getSkyboxColor() {
+        return skyboxColor;
     }
 }

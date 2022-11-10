@@ -3,24 +3,28 @@ package org.opengame.engine.scene;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.java.Log;
-import lombok.extern.log4j.Log4j2;
-import org.joml.Matrix4x3f;
-import org.joml.Vector3f;
+import org.joml.*;
 import org.lwjgl.bgfx.BGFXMemory;
 import org.lwjgl.bgfx.BGFXReleaseFunctionCallback;
 import org.lwjgl.bgfx.BGFXVertexLayout;
 import org.lwjgl.system.MemoryUtil;
 import org.opengame.engine.Engine;
-import org.opengame.engine.object.SceneObject;
+import org.opengame.engine.camera.Camera;
+import org.opengame.engine.object.MaterialObject;
+import org.opengame.engine.render.Material;
 
+import java.awt.*;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Vector;
 
+import static org.joml.Math.*;
 import static org.lwjgl.bgfx.BGFX.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
@@ -28,63 +32,98 @@ import static org.lwjgl.system.MemoryUtil.*;
  * Base class for all meshes
  */
 @Log
-public class Mesh extends SceneObject {
-    private static final int VERTEX_SIZE = (5 * 4);
+public class Mesh extends MaterialObject {
     private static BGFXReleaseFunctionCallback releaseMemoryCb =
             BGFXReleaseFunctionCallback.create((_ptr, _userData) -> nmemFree(_ptr));
-    private static final String TEST_TEXTURE = "test.dds";
-
-    private final ByteBuffer vertices;
-    private final ByteBuffer indices;
+    private static final String TEST_TEXTURE = "textures/test.dds";
 
     @Getter
-    private final int vertexCount;
+    @Setter
+    private ByteBuffer vertices;
     @Getter
-    private final int indexCount;
+    @Setter
+    private ByteBuffer indices;
+
+    @Getter
+    @Setter
+    private Material[] materials;
+
+    @Getter
+    @Setter
+    private int vertexCount;
+    @Getter
+    @Setter
+    private int indexCount;
 
     private final short vertexBuffer;
     private final short indexBuffer;
     private final BGFXVertexLayout layout;
     private final short program;
+
+    private short textureUniform = -1;
+    private short colorUniform = -1;
+    private short camPosUniform = -1;
+    private short ambienceColorUniform = -1;
+    private short diffuseColorUniform = -1;
+    private short specColorUniform = -1;
+    private short specCoeffUniform = -1;
     private short texture;
-    private short textureUniform;
+
+    private float[] colorBuf;
+    private long drawType;
+
+    private int vertexSize;
 
     private final Matrix4x3f model = new Matrix4x3f();
+
     private final FloatBuffer modelBuffer;
 
-    @Getter
-    @Setter
-    private Vector3f position;
-    @Getter
-    @Setter
-    private Vector3f rotation;
+    public Mesh(MeshInfo info) throws IOException {
+        this.materials = info.getMaterials();
 
-    public Mesh(Object[][] vertexData, int[] indexData, String vertexShaderName,
-                String fragmentShaderName, String textureFileName) throws IOException {
-        position = new Vector3f();
-        rotation = new Vector3f();
+        this.vertexSize = info.isVertexWithColor() ? 4 * 4 : info.isUseTexture() ? 4 * 5 : 4 * 3;
+        if (info.isUseNormals()) {
+            vertexSize += 3 * 4;
+        }
+        this.drawType = info.getDrawType();
 
-        layout = createVertexLayout(false, false, true);
-        vertexCount = vertexData.length;
-        vertices = memAlloc(vertexData.length * VERTEX_SIZE);
-        vertexBuffer = createVertexBuffer(vertices, layout, vertexData);
-        indexCount = indexData.length;
-        indices = memAlloc(indexData.length * 2);
-        indexBuffer = createIndexBuffer(indices, indexData);
-        texture = loadTexture(textureFileName == null ? TEST_TEXTURE : textureFileName);
-        textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+        layout = createVertexLayout(info.isUseNormals(), info.isVertexWithColor(), info.isUseTexture());
+        vertexCount = info.getVertexData().length;
+        vertices = memAlloc(info.getVertexData().length * vertexSize);
+        vertexBuffer = createVertexBuffer(vertices, layout, info.getVertexData());
+        indexCount = info.getIndexData().length;
+        indices = memAlloc(info.getIndexData().length * 2);
+        indexBuffer = createIndexBuffer(indices, info.getIndexData());
 
-        if (vertexShaderName != null && fragmentShaderName != null) {
-            short vertexShader = loadShader(vertexShaderName);
-            short fragmentShader = loadShader(fragmentShaderName);
-
-            this.program = bgfx_create_program(vertexShader, fragmentShader, true);
+        if (info.getTextureFileName() != null) {
+            texture = loadTexture(info.getTextureFileName());
+            textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
         } else {
-            // default shader
-            this.program = 0;
+            texture = -1;
+            textureUniform = -1;
+        }
+        if (info.getColor() != null) {
+            colorBuf = createBufferForColor(info.getColor());
+            colorUniform = bgfx_create_uniform("u_color", BGFX_UNIFORM_TYPE_VEC4, 1);
+        }
+        if (info.isUseNormals()) {
+            diffuseColorUniform = bgfx_create_uniform("u_diffuseColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+            specColorUniform = bgfx_create_uniform("u_specColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+            ambienceColorUniform = bgfx_create_uniform("u_ambienceColor", BGFX_UNIFORM_TYPE_VEC4, 1);
         }
 
+        camPosUniform = bgfx_create_uniform("u_camPos", BGFX_UNIFORM_TYPE_VEC4, 1);
+
+        program = loadShaderProgram(info);
+
         modelBuffer = MemoryUtil.memAllocFloat(16);
+    }
+
+    private float[] createBufferForColor(Color color) {
+        var components = color.getRGBColorComponents(new float[4]);
+        components[3] = color.getAlpha() * 1.0f / 255f;
+
+        return components;
     }
 
     /**
@@ -100,14 +139,14 @@ public class Mesh extends SceneObject {
         bgfx_vertex_layout_begin(layout, Engine.getRenderer());
         bgfx_vertex_layout_add(layout, BGFX_ATTRIB_POSITION, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
 
-        if (withNormals) {
-            bgfx_vertex_layout_add(layout, BGFX_ATTRIB_NORMAL, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
-        }
         if (withColor) {
             bgfx_vertex_layout_add(layout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, false);
         }
         if (withTexture) {
             bgfx_vertex_layout_add(layout, BGFX_ATTRIB_TEXCOORD0, 2, BGFX_ATTRIB_TYPE_FLOAT, true, true);
+        }
+        if (withNormals) {
+            bgfx_vertex_layout_add(layout, BGFX_ATTRIB_NORMAL, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
         }
 
         bgfx_vertex_layout_end(layout);
@@ -143,6 +182,18 @@ public class Mesh extends SceneObject {
         return bgfx_create_index_buffer(Objects.requireNonNull(bgfx_make_ref(buffer)), BGFX_BUFFER_NONE);
     }
 
+    private short loadShaderProgram(MeshInfo info) throws IOException {
+        if (info.getVertexShaderName() != null && info.getFragmentShaderName() != null) {
+            short vertexShader = loadShader(info.getVertexShaderName());
+            short fragmentShader = loadShader(info.getFragmentShaderName());
+
+            return bgfx_create_program(vertexShader, fragmentShader, true);
+        } else {
+            // default shader
+            return 0;
+        }
+    }
+
     private short loadShader(String shaderName) throws IOException {
         String resourcePath = Engine.getWorkingDirectory() + "shaders/";
 
@@ -176,7 +227,7 @@ public class Mesh extends SceneObject {
     }
 
     private short loadTexture(String fileName) throws IOException {
-        var textureDirPath = Engine.getWorkingDirectory() + "textures/";
+        var textureDirPath = Engine.getWorkingDirectory();
         ByteBuffer textureData = loadResource(textureDirPath + fileName);
         BGFXMemory textureMemory = bgfx_make_ref_release(textureData, releaseMemoryCb, NULL);
 
@@ -213,11 +264,22 @@ public class Mesh extends SceneObject {
     }
 
     public void setTexture(String textureName) throws IOException {
-        bgfx_destroy_texture(texture);
-        bgfx_destroy_uniform(textureUniform);
+        if (texture != -1) {
+            bgfx_destroy_texture(texture);
+            bgfx_destroy_uniform(textureUniform);
+        }
 
         texture = loadTexture(textureName);
         textureUniform = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_VEC4, 1);
+    }
+
+    public void lookAt(Vector3f lookAt) {
+       var targetDir = new Vector3f(lookAt.x - getPosition().x,
+                lookAt.y - getPosition().y,
+                lookAt.z - getPosition().z).normalize();
+       var currentDir = new Vector3f(0, 1, 0).rotate(getOrientation());
+
+        getOrientation().rotationTo(currentDir, targetDir);
     }
 
     @Override
@@ -226,20 +288,37 @@ public class Mesh extends SceneObject {
         bgfx_dbg_text_printf(0, 3, 0x0f, String.format("Frame: %7.3f[ms]", frameTime));
 
         long encoder = bgfx_encoder_begin(false);
+
         bgfx_encoder_set_transform(encoder,
-                model.translation(position)
-                        .rotateXYZ(rotation)
-                        .get4x4(modelBuffer));
+                    model.translation(getPosition())
+                            .rotate(getOrientation())
+                            .scale(getScale())
+                            .get4x4(modelBuffer));
 
         bgfx_encoder_set_vertex_buffer(encoder, 0, vertexBuffer, 0, vertexCount);
         bgfx_encoder_set_index_buffer(encoder, indexBuffer, 0, indexCount);
 
-        bgfx_encoder_set_texture(encoder, 0, textureUniform, texture, 0xffffffff);
+        if (texture != -1) {
+            bgfx_encoder_set_texture(encoder, 0, textureUniform, texture, 0xffffffff);
+        }
+        if (colorUniform != -1) {
+            bgfx_encoder_set_uniform(encoder, colorUniform, colorBuf,1);
+        }
+        if (camPosUniform != -1) {
+            var cameraPos = Engine.getCurrentScene().getCamera().getPosition();
+            bgfx_encoder_set_uniform(encoder, camPosUniform, new float[] {cameraPos.x, cameraPos.y, cameraPos.z, 1.0f}, 1);
+        }
+        if (ambienceColorUniform != -1) {
+            bgfx_encoder_set_uniform(encoder, ambienceColorUniform, materials[0].getAmbienceColor(), 1);
+            bgfx_encoder_set_uniform(encoder, diffuseColorUniform, materials[0].getDiffuseColor(), 1);
+            bgfx_encoder_set_uniform(encoder, specColorUniform, materials[0].getSpecularColor(), 1);
+        }
 
         bgfx_encoder_set_state(encoder, BGFX_STATE_WRITE_RGB
                 | BGFX_STATE_WRITE_A
                 | BGFX_STATE_WRITE_Z
                 | BGFX_STATE_DEPTH_TEST_LESS
+                | drawType
                 | BGFX_STATE_MSAA, 0);
 
         bgfx_encoder_submit(encoder, 0, program, 0, 0);
@@ -250,11 +329,17 @@ public class Mesh extends SceneObject {
         MemoryUtil.memFree(modelBuffer);
 
         bgfx_destroy_program(program);
-        bgfx_destroy_texture(texture);
-        bgfx_destroy_uniform(textureUniform);
+
+        if (textureUniform != -1) {
+            bgfx_destroy_texture(texture);
+            bgfx_destroy_uniform(textureUniform);
+        }
+        if (colorUniform != -1) {
+            bgfx_destroy_uniform(colorUniform);
+        }
 
         bgfx_destroy_index_buffer(indexBuffer);
+        bgfx_destroy_vertex_buffer(vertexBuffer);
         MemoryUtil.memFree(indices);
     }
-
 }

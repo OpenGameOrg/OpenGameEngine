@@ -1,11 +1,15 @@
 package org.opengame.engine.scene;
 
 import lombok.extern.java.Log;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.assimp.AIMaterial;
 import org.lwjgl.assimp.AIMesh;
 import org.lwjgl.assimp.AIScene;
+import org.opengame.engine.render.Material;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.lwjgl.assimp.Assimp.aiImportFile;
 import static org.lwjgl.assimp.Assimp.aiProcess_OptimizeMeshes;
@@ -15,7 +19,17 @@ import static org.lwjgl.assimp.Assimp.aiProcess_OptimizeMeshes;
  */
 @Log
 public class MeshLoader {
-    public static Model loadModel(String modelPath) throws IOException {
+    public static List<Mesh> loadMeshes(String modelPath) throws IOException {
+        var defaultMeshInfo = MeshInfo.builder()
+                .useTexture(true)
+                .useNormals(true)
+                .vertexShaderName("vs_textured")
+                .fragmentShaderName("fs_textured").build();
+
+        return loadMeshes(modelPath, defaultMeshInfo);
+    }
+
+    public static List<Mesh> loadMeshes(String modelPath, MeshInfo meshInfo) throws IOException {
         AIScene scene = aiImportFile(modelPath, aiProcess_OptimizeMeshes);
 
         if (scene == null) {
@@ -29,22 +43,54 @@ public class MeshLoader {
         var meshesBuffer = scene.mMeshes();
         var meshes = new ArrayList<Mesh>();
         for (int i = 0; i < scene.mNumMeshes(); i++) {
-            meshes.add(createMesh(AIMesh.create(meshesBuffer.get(i))));
+            meshes.add(createMesh(AIMesh.create(meshesBuffer.get(i)), meshInfo, scene.mMaterials()));
         }
 
-        return new Model(meshes);
+        return meshes;
     }
 
-    private static Mesh createMesh(AIMesh aiMesh) throws IOException {
+    public static Model loadModel(String modelPath) throws IOException {
+        return new Model(loadMeshes(modelPath));
+    }
+
+    public static Model loadModel(String modelPath, MeshInfo info) throws IOException {
+        return new Model(loadMeshes(modelPath, info));
+    }
+
+    private static Mesh createMesh(AIMesh aiMesh, MeshInfo meshInfo, PointerBuffer materials) throws IOException {
         var vertices = aiMesh.mVertices();
         var texCoords = aiMesh.mTextureCoords(0);
+        var normals = aiMesh.mNormals();
 
         assert texCoords != null;
 
-        var meshVertices = new Object[aiMesh.mNumVertices()][5];
-        for (int i = 0; i < meshVertices.length; i++) {
+        int size = 3;
+        if (meshInfo.isUseTexture()) {
+            size += 2;
+        }
+        if (meshInfo.isUseNormals()) {
+            size += 3;
+        }
+        var meshVertices = new Object[aiMesh.mNumVertices()][size];;
+        for (int i = 0; i < aiMesh.mNumVertices(); i++) {
             var vert = vertices.get(i);
-            meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(), texCoords.get(i).x(), texCoords.get(i).y()};
+            if (meshInfo.isUseTexture()) {
+                if (meshInfo.isUseNormals()) {
+                    meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(),
+                            texCoords.get(i).x(), texCoords.get(i).y(),
+                            normals.get(i).x(), normals.get(i).y(), normals.get(i).z()};
+                } else {
+                    meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(),
+                            texCoords.get(i).x(), texCoords.get(i).y()};
+                }
+            } else {
+                if (meshInfo.isUseNormals()) {
+                    meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z(),
+                            normals.get(i).x(), normals.get(i).y(), normals.get(i).z()};
+                } else {
+                    meshVertices[i] = new Object[]{ vert.x(), vert.y(), vert.z() };
+                }
+            }
         }
 
         var faces = aiMesh.mFaces();
@@ -56,7 +102,16 @@ public class MeshLoader {
             meshIndices[i * 3 + 2] = face.mIndices().get(2);
         }
 
-        return new Mesh(meshVertices, meshIndices,
-                "vs_simple_textured", "fs_simple_textured", null);
+        var material = Material.from(AIMaterial.create(materials.get(aiMesh.mMaterialIndex())));
+
+        return new Mesh(MeshInfo.builder()
+                .vertexData(meshVertices)
+                .indexData(meshIndices)
+                .useNormals(meshInfo.isUseNormals())
+                .useTexture(meshInfo.isUseTexture())
+                .materials(new Material[] { material })
+                .vertexShaderName(meshInfo.getVertexShaderName())
+                .fragmentShaderName(meshInfo.getFragmentShaderName())
+                .color(meshInfo.getColor()).build());
     }
 }

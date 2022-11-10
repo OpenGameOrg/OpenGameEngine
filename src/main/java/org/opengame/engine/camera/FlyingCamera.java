@@ -32,6 +32,8 @@ public class FlyingCamera extends Camera {
     private float currentForwardSpeed = 0;
     private float currentUpSpeed = 0;
 
+    private float boostMultiplier = 10f;
+
     private float startTime;
     private float mouseSensitivity = 0.15f;
 
@@ -66,10 +68,14 @@ public class FlyingCamera extends Camera {
         var deltaY = lastMouseY - eventData.getYPos();
 
         if (deltaX != 0) {
-            rotateLeftRight((float) deltaX * mouseSensitivity);
+            var angle = (float) deltaX * mouseSensitivity;
+            rotateLeftRight(angle);
+            getRotation().add(angle, 0, 0);
         }
         if (deltaY != 0) {
+            var angle = (float) deltaY * mouseSensitivity;
             rotateUpDown((float) deltaY * mouseSensitivity);
+            getRotation().add(0, angle, 0);
         }
         setViewProjection();
 
@@ -77,36 +83,6 @@ public class FlyingCamera extends Camera {
         lastMouseY = eventData.getYPos();
 
         //Engine.setCursorPos(windowCenterPos);
-    }
-
-    private void rotateUpDown(float delta) {
-        var normalizedDirection = direction.normalize();
-        var directionNoY = new Vector3f(normalizedDirection.x, 0, normalizedDirection.z).normalize();
-
-        var currentAngleDegrees = Math.toDegrees(Math.acos(directionNoY.dot(direction)));
-        if (normalizedDirection.y < 0.0f) {
-            currentAngleDegrees = -currentAngleDegrees;
-        }
-
-        var newAngleDegrees = currentAngleDegrees + delta;
-
-        if (newAngleDegrees < -85.0f || newAngleDegrees > 85.0f) return;
-
-        var rotationAxis = new Vector3f(normalizedDirection).cross(up).normalize();
-        var rotationMatrix = new Matrix4f().rotate((float) Math.toRadians(delta), rotationAxis);
-
-        var rotatedDirection = new Vector4f(normalizedDirection, 0).mul(rotationMatrix).normalize();
-        direction = new Vector3f(rotatedDirection.x, rotatedDirection.y, rotatedDirection.z);
-    }
-
-    private void rotateLeftRight(float delta) {
-        var normalizedDirection = direction.normalize();
-        var rotationMatrix = new Matrix4f().rotate((float) Math.toRadians(delta), up);
-        var rotatedDirection = new Vector4f(normalizedDirection, 0).mul(rotationMatrix);
-        direction = new Vector3f(rotatedDirection.x, rotatedDirection.y, rotatedDirection.z);
-
-        var rotatedRight = new Vector4f(right.normalize(), 0).mul(rotationMatrix);
-        right = new Vector3f(rotatedRight.x, rotatedRight.y, rotatedRight.z);
     }
 
     private void processKeyPressedEvent(KeyEventData eventData) {
@@ -129,6 +105,11 @@ public class FlyingCamera extends Camera {
         if (key == GLFW_KEY_SPACE) {
             currentUpSpeed += flySpeed * isPressedMultiplier;
         }
+        if (key == GLFW_KEY_LEFT_SHIFT) {
+            currentUpSpeed = eventData.isPressed() ? currentUpSpeed * boostMultiplier : currentUpSpeed / boostMultiplier;
+            currentStrafeSpeed = eventData.isPressed() ? currentStrafeSpeed * boostMultiplier : currentStrafeSpeed / boostMultiplier;
+            currentForwardSpeed = eventData.isPressed() ? currentForwardSpeed * boostMultiplier : currentForwardSpeed / boostMultiplier;
+        }
 
         if (key == GLFW_MOUSE_BUTTON_RIGHT) {
             isChangingDirection = eventData.isPressed();
@@ -145,7 +126,7 @@ public class FlyingCamera extends Camera {
     }
 
     @Override
-    public void update() {
+    public void update(float time, float tickTime) {
         if (currentStrafeSpeed != 0) {
             moveRight(currentStrafeSpeed);
         }

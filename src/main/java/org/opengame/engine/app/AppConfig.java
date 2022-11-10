@@ -26,6 +26,11 @@ public class AppConfig {
     private int windowWidth = 800;
     private int windowHeight = 600;
 
+    private boolean fullScreenMode = false;
+
+   // private int fpsLimit = -1;
+    private int ups = 40;
+
     private String workingDirectory;
 
     public String getWorkingDirectory() {
@@ -36,10 +41,7 @@ public class AppConfig {
         return workingDirectory;
     }
 
-    public void setWorkingDirectory(String relativePath) throws URISyntaxException, UnsupportedEncodingException {
-        var jarPath = new File(AppConfig.class.getProtectionDomain().getCodeSource().getLocation()
-                .toURI()).getPath();
-        var jarUtfPath = URLDecoder.decode(jarPath, StandardCharsets.UTF_8);
-        workingDirectory = jarUtfPath.substring(0, jarUtfPath.lastIndexOf("/") + 1) + relativePath + "/";
+    public void setWorkingDirectory(String fullPath) {
+        workingDirectory = fullPath;
     }
 }

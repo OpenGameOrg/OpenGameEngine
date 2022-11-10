@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Getter
-public class MouseEventData extends EventData {
+public class MouseEventData {
     private final double xPos;
     private final double yPos;
 }

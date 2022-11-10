@@ -13,7 +13,7 @@ public class SceneObject implements Renderable, DynamicObject {
     }
 
     @Override
-    public void update() {
+    public void update(float time, float tickTimeMs) {
         // override in children
     }
 }
